@@ -1,0 +1,34 @@
+---
+title: "Kaiyo Warehouse Traffic"
+author: "Mariel Pacada"
+date: "5/15/2020"
+output: pdf_document
+---
+
+```{r dataset setup, include = FALSE}
+setwd("/Users/marielpacada/kaiyo-traffic")
+categories <- read.csv("categories.csv") 
+warehouse <- read.csv("warehouse_flux.csv")
+warehouse$create_date <- strptime(warehouse$create_date, format = "%Y-%m-%d %H:%M:%S")
+warehouse <- warehouse[order(warehouse$create_date),]
+
+# item number 184294 duplicate
+```
+
+```{r library setup}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+```
+
+```{r factors}
+length(unique(warehouse$create_date))
+warehouse$X[warehouse$subitem_id== 182821]
+warehouse$status[warehouse$subitem_id== 182821]
+warehouse$create_date[warehouse$subitem_id== 182821]
+warehouse$category_id[warehouse$subitem_id== 182821]
+```
+
+```{r sorting}
+warehouse <- warehouse[order(warehouse$create_date),]
+```
