@@ -5,30 +5,27 @@ date: "5/15/2020"
 output: pdf_document
 ---
 
-```{r dataset setup, include = FALSE}
-setwd("/Users/marielpacada/kaiyo-traffic")
-categories <- read.csv("categories.csv") 
-warehouse <- read.csv("warehouse_flux.csv")
-warehouse$create_date <- strptime(warehouse$create_date, format = "%Y-%m-%d %H:%M:%S")
-warehouse <- warehouse[order(warehouse$create_date),]
-
-# item number 184294 duplicate
-```
-
 ```{r library setup}
 library(dplyr)
 library(ggplot2)
 library(tidyr)
 ```
 
-```{r factors}
-length(unique(warehouse$create_date))
-warehouse$X[warehouse$subitem_id== 182821]
-warehouse$status[warehouse$subitem_id== 182821]
-warehouse$create_date[warehouse$subitem_id== 182821]
-warehouse$category_id[warehouse$subitem_id== 182821]
-```
+```{r data cleaning, include = FALSE}
+setwd("/Users/marielpacada/kaiyo-traffic")
+categories <- read.csv("categories.csv") 
+warehouse <- read.csv("warehouse_flux.csv", stringsAsFactors = FALSE)
 
-```{r sorting}
+# remove duplicates 
+warehouse$X <- NULL
+warehouse <- unique(warehouse)
+
+# join warehouse data with item categories
+names(categories)[1] <- "category_id"
+warehouse <- merge(warehouse, categories, by = "category_id")
+
+# order by timestamp
+warehouse$create_date <- strptime(warehouse$create_date, format = "%Y-%m-%d %H:%M:%S")
 warehouse <- warehouse[order(warehouse$create_date),]
 ```
+
