@@ -89,6 +89,8 @@ sold_ratio_data <- data.frame(
 )
 
 ggplot(sold_ratio_data, aes(x = category, y = sold_ratio)) + geom_bar(fill = "#F2AE0F", stat = "identity") + labs(title = "Sold Ratio") 
+
+# more people are probably buying decor because it is cheaper and a lower commitment 
 ```
 
 ```{r likelihood-retired}
@@ -121,22 +123,31 @@ covid <- third_of_year %>%
 ```
 
 ```{r covid-ratios}
-sales_total <- length(third_of_year$status[third_of_year$status == "Sold"])
-sales_before <- length(pre_covid$status[pre_covid$status == "Sold"])
-sales_during <- length(covid$status[covid$status == "Sold"])
+quad_activity <- function(activity) { 
+  total <- length(third_of_year$status[third_of_year$status == activity])
+  before <- length(pre_covid$status[pre_covid$status == activity])
+  during <- length(covid$status[covid$status == activity])
+  
+  return(c(total, before, during))
+}
 
-rec_total <- length(third_of_year$status[third_of_year$status == "Receiving"])
-rec_before <- length(pre_covid$status[pre_covid$status == "Receiving"])
-rec_during <- length(covid$status[covid$status == "Receiving"])
+sales <- quad_activity("Sold")
+rec <- quad_activity("Receiving")
 
 # this is two-thirds :) 
-sales_before / sales_total
-sales_during / sales_total
+pre_covid_sales <- sales[2] / sales[1]
+covid_sales <- sales[3] / sales[1]
 
 # this actually suggests that the covid receiving is higher (should be 1/3 but is 1/2)
 # possibly because people are moving out of tri-state area 
-rec_before / rec_total
-rec_during / rec_total
+pre_covid_rec <- rec[2] / rec[1]
+covid_rec <- rec[3] / rec[1]
+
+
+pre_covid_sales
+covid_sales
+pre_covid_rec
+covid_rec
 ```
 
 ```{r seed-funding-analysis}
