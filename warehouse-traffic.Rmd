@@ -5,13 +5,14 @@ date: "5/15/2020"
 output: pdf_document
 ---
 
-```{r library setup}
+```{r library setup, warning = FALSE}
 library(dplyr)
 library(ggplot2)
 library(tidyr)
+library(lubridate)
 ```
 
-```{r data cleaning, include = FALSE}
+```{r data cleaning}
 setwd("/Users/marielpacada/kaiyo-traffic")
 categories <- read.csv("categories.csv") 
 warehouse <- read.csv("warehouse_flux.csv", stringsAsFactors = FALSE)
@@ -23,9 +24,25 @@ warehouse <- unique(warehouse)
 # join warehouse data with item categories
 names(categories)[1] <- "category_id"
 warehouse <- merge(warehouse, categories, by = "category_id")
+warehouse$category_id <- NULL
 
 # order by timestamp
 warehouse$create_date <- strptime(warehouse$create_date, format = "%Y-%m-%d %H:%M:%S")
 warehouse <- warehouse[order(warehouse$create_date),]
+
+# parse month and year from timestamp + delete timestamp
+warehouse$year <- as.factor(warehouse$create_date$year + 1900)
+warehouse$month <- warehouse$create_date$mon + 1
+warehouse$month <- as.factor(month.abb[warehouse$month])
+warehouse$create_date <- NULL
+```
+
+```{r}
+
+
+
+
+
+
 ```
 
