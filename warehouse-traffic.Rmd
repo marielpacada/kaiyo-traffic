@@ -7,9 +7,8 @@ output: pdf_document
 
 ```{r library setup, warning = FALSE}
 library(dplyr)
+library(sqldf)
 library(ggplot2)
-library(tidyr)
-library(lubridate)
 ```
 
 ```{r data cleaning}
@@ -33,16 +32,95 @@ warehouse <- warehouse[order(warehouse$create_date),]
 # parse month and year from timestamp + delete timestamp
 warehouse$year <- as.factor(warehouse$create_date$year + 1900)
 warehouse$month <- warehouse$create_date$mon + 1
-warehouse$month <- as.factor(month.abb[warehouse$month])
+warehouse$month <- month.abb[warehouse$month]
 warehouse$create_date <- NULL
 ```
 
-```{r}
+```{r explore-status}
+# which category is highest selling?
+sold_data <- warehouse %>% 
+               filter(status == "Sold")
+ggplot(sold_data, aes(x = category)) + geom_bar(fill = "#F2AE0F") + labs(title = "Sold")
+
+# which _datacategory do we see most of?
+receiving_data <- warehouse %>%
+                    filter(status == "Receiving")
+ggplot(receiving_data, aes(category)) + geom_bar(fill = "#F2AE0F") + labs(title = "Receving")
+
+# which category is most retired?
+retired_data <- warehouse %>% 
+                  filter(status == "Retired")
+ggplot(retired_data, aes(category)) + geom_bar(fill = "#F2AE0F") + labs(title= "Retired")
+```
+
+```{r explore-month, fig.width = 5}
+month_data <- warehouse %>% 
+                filter(status == "Sold" | status == "Receiving")
+
+ggplot(month_data, aes(x = factor(month, levels = month.abb), fill = status)) + geom_bar(position = position_dodge()) + labs(title = "Activity per month") +
+theme(legend.title = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "grey")) +
+scale_fill_brewer(palette="RdPu")
+
+# onset of spring and onset of fall (aka the end of extreme seasons) are when the activity is highest
+# THE FIRST TRIMESTER -- HCHECK WHICH CATEGORY OF ITEMS IS SELLING THE MOST -- SUGGEST THAT YOU COULD BE MORE SELECTIVE ABOUT THIS -- AND THEN RELATE THIS WITH RETIRED RATIO
+```
+
+```{r likelihood-sold}
+sold_count_data <- sold_data %>%
+                     group_by(category) %>% 
+                     summarize(count = n())
+
+receiving_count_data <- receiving_data %>% 
+                          group_by(category) %>% 
+                          summarize(count = n())
+
+sold_ratio_data <- data.frame(
+  category = levels(categories$category),
+  sold_ratio = sold_count_data$count / receiving_count_data$count
+)
+
+ggplot(sold_ratio_data, aes(x = category, y = sold_ratio)) + geom_bar(fill = "#F2AE0F", stat = "identity") + labs(title = "Sold Ratio")
+```
+
+```{r likelihood-retired}
+retired_count_data <- retired_data %>%
+                        group_by(category) %>% 
+                        summarize(count = n())
+
+retired_ratio_data <- data.frame(
+  category = levels(categories$category),
+  retired_ratio = retired_count_data$count / receiving_count_data$count
+)
+
+ggplot(retired_ratio_data, aes(x = category, y = retired_ratio)) + geom_bar(fill = "#F2AE0F", stat = "identity") + labs(title = "Retired Ratio")
+
+```
+
+```{r covid-analysis}
+third_year <- warehouse %>% 
+                filter((month == "Jan"|month == "Feb"|month == "Mar"|month == "Apr") 
+                  & (year == "2018"|year == "2019"|year == "2020"))
 
 
+pre_covid <- warehouse %>%
+               filter(month == "Jan"|month == "Feb"|month == "Mar"|month == "Apr") %>%
+               filter(year == "2018"|year == "2019")
 
+covid <- warehouse %>% 
+           filter(month == "Jan"|month == "Feb"|month == "Mar"|month == "Apr") %>%
+           filter(year == "2020")
 
 
 
 ```
 
+
+
+```{r re-enter-activity}
+all_received <- receiving_data %>% dplyr::select(status, subitem_id, category)
+once_received <- unique(all_received)
+repeat_received <- all_received %>% group_by(subitem_id) %>% summarize(count = n()) %>% filter(count > 1)
+
+
+
+```
