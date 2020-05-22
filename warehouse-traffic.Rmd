@@ -10,10 +10,10 @@ library(dplyr)
 library(ggplot2)
 ```
 
-```{r data cleaning}
+```{r data-cleaning}
 setwd("/Users/marielpacada/kaiyo-traffic")
 categories <- read.csv("categories.csv") 
-warehouse <- read.csv("warehouse_flux.csv", stringsAsFactors = FALSE)
+warehouse <- read.csv("warehouse_flux.csv")
 
 # remove duplicates 
 warehouse$X <- NULL
@@ -35,146 +35,101 @@ warehouse$month <- month.abb[warehouse$month]
 warehouse$create_date <- NULL
 ```
 
-```{r explore-status}
-# which category is highest selling?
-sold_data <- warehouse %>% 
-               filter(status == "Sold")
-ggplot(sold_data, aes(x = category)) + geom_bar(fill = "#F2AE0F") + labs(title = "Sold")
+```{r count-by-status}
+# function input: factor from status column
+# function output: bar chart displaying count by each category
+status_count <- function(activity) { 
+  data <- warehouse %>% filter(status == activity)
+  return(ggplot(data, aes(x = category)) + geom_bar(fill = "#F2AE0F") + labs(title = activity) +
+           xlab("Category") + ylab("Count"))
+}
 
-# which _datacategory do we see most of?
-receiving_data <- warehouse %>%
-                    filter(status == "Receiving")
-ggplot(receiving_data, aes(category)) + geom_bar(fill = "#F2AE0F") + labs(title = "Receiving")
-
-# which category is most retired?
-retired_data <- warehouse %>% 
-                  filter(status == "Retired")
-ggplot(retired_data, aes(category)) + geom_bar(fill = "#F2AE0F") + labs(title= "Retired")
+status_count("Receiving")
+status_count("Sold")
+status_count("Retired")
 ```
 
-```{r explore-month, fig.width = 5}
-month_data <- warehouse %>% 
-                filter(status == "Sold" | status == "Receiving")
+```{r activity-per-month, fig.width = 5}
+month_data <- warehouse %>% filter(status == "Sold" | status == "Receiving")
 
-ggplot(month_data, aes(x = factor(month, levels = month.abb), fill = status)) + geom_bar(position = position_dodge()) + labs(title = "Activity per month") +
-theme(legend.title = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "grey")) +
-scale_fill_brewer(palette="GnBu")
-
-# THE FIRST TRIMESTER -- CHECK WHICH CATEGORY OF ITEMS IS RECEIVING THE MOST -- SUGGEST THAT YOU COULD BE MORE SELECTIVE ABOUT THIS -- AND THEN RELATE THIS WITH RETIRED RATIO
+ggplot(month_data, aes(x = factor(month, levels = month.abb), fill = status)) + 
+  geom_bar(position = position_dodge()) + 
+  labs(title = "Monthly Receiving and Selling Activity", fill = "Status") + 
+  scale_fill_brewer(palette = "Paired")
 ```
 
 ```{r first-trimester}
 first_tri <- warehouse %>% 
-               filter(month == "Jan"|month == "Feb"|month == "Mar") %>% 
-               filter(status == "Receiving") %>% 
+               filter(month == "Jan"|month == "Feb"|month == "Mar" & status == "Receiving") %>%
                group_by(category) %>% 
                summarize(count = n())
 
-ggplot(first_tri, aes(x = category, y = count)) + geom_bar(fill = "#43ad26", stat = "identity") + labs(title = "First Trimester Receiving")
-
+ggplot(first_tri, aes(x = category, y = count)) + geom_bar(fill = "#F2AE0F", stat = "identity") + 
+  labs(title = "First Trimester Receiving")
 ```
 
 ```{r likelihood-sold}
-sold_count_data <- sold_data %>%
-                     group_by(category) %>% 
-                     summarize(count = n())
+leave_prob <- function(activity) {
+  status_data <- warehouse %>% filter(status == activity) %>% group_by(category) %>% summarize(count = n())
+  rec_data <- warehouse %>% filter(status == "Receiving") %>% group_by(category) %>% summarize(count = n())
+  df <- data.frame(category = levels(categories$category), ratio = status_data$count / rec_data$count)
+  
+  return(ggplot(df, aes(x = category, y = ratio)) + geom_bar(fill = "#F2AE0F", stat = "identity") + 
+           labs(title = paste("Probability of Being", activity)))
+}
 
-receiving_count_data <- receiving_data %>% 
-                          group_by(category) %>% 
-                          summarize(count = n())
+leave_prob("Sold")
+leave_prob("Retired")
 
-sold_ratio_data <- data.frame(
-  category = levels(categories$category),
-  sold_ratio = sold_count_data$count / receiving_count_data$count
-)
-
-ggplot(sold_ratio_data, aes(x = category, y = sold_ratio)) + geom_bar(fill = "#F2AE0F", stat = "identity") + labs(title = "Sold Ratio") 
 
 # more people are probably buying decor because it is cheaper and a lower commitment 
 ```
 
-```{r likelihood-retired}
-retired_count_data <- retired_data %>%
-                        group_by(category) %>% 
-                        summarize(count = n())
+```{r covid-data-setup}
+first_quad <- warehouse %>% filter(month == "Jan"|month == "Feb"|month == "Mar"|month == "Apr")
 
-retired_ratio_data <- data.frame(
-  category = levels(categories$category),
-  retired_ratio = retired_count_data$count / receiving_count_data$count
-)
+# this should be two-thirds of the third_of_year data
+pre_covid <- first_quad %>% filter(year != "2020")
 
-ggplot(retired_ratio_data, aes(x = category, y = retired_ratio)) + geom_bar(fill = "#F2AE0F", stat = "identity") + labs(title = "Retired Ratio")
+# this should be one-third of the third-_of_year_data
+covid <- first_quad %>% filter(year == "2020")
 
 ```
 
 ```{r covid-analysis}
-third_of_year <- warehouse %>% 
-                   filter(month == "Jan"|month == "Feb"|month == "Mar"|month == "Apr") %>%
-                   filter(year == "2018"|year == "2019"|year == "2020")
-
-# this should be two-thirds of the third_of_year data
-pre_covid <- third_of_year %>% 
-               filter(year != "2020")
-
-# this should be one-third of the third-_of_year_data
-covid <- third_of_year %>% 
-           filter(year == "2020")
-
-```
-
-```{r covid-ratios}
 quad_activity <- function(activity) { 
-  total <- length(third_of_year$status[third_of_year$status == activity])
+  total <- length(first_quad$status[first_quad$status == activity])
   before <- length(pre_covid$status[pre_covid$status == activity])
   during <- length(covid$status[covid$status == activity])
   
-  return(c(total, before, during))
+  before_ratio <- before / total
+  during_ratio <- during / total
+  
+  return(as.data.frame(t(rbind(c("before", "during"), c(before_ratio, during_ratio)))))
 }
 
-sales <- quad_activity("Sold")
-rec <- quad_activity("Receiving")
-
-# this is two-thirds :) 
-pre_covid_sales <- sales[2] / sales[1]
-covid_sales <- sales[3] / sales[1]
-
-# this actually suggests that the covid receiving is higher (should be 1/3 but is 1/2)
-# possibly because people are moving out of tri-state area 
-pre_covid_rec <- rec[2] / rec[1]
-covid_rec <- rec[3] / rec[1]
-
-
-pre_covid_sales
-covid_sales
-pre_covid_rec
-covid_rec
+quad_activity("Sold")
+quad_activity("Receiving")
 ```
 
 ```{r seed-funding-analysis}
 # baseline 2018 and 2019 data
-general_activity <- warehouse %>% 
-                      filter(year != "2020") %>% 
-                      group_by(year, status) %>% 
-                      summarise(count = n())
-
-general_yearly <- general_activity %>% 
-                    group_by(year) %>% 
-                    summarize(count = sum(count))
+general_activity <- warehouse %>% filter(year != "2020") %>% group_by(year, status) %>% summarize(count = n())
+general_yearly <- general_activity %>% group_by(year) %>% summarize(count = sum(count))
 
 activity_yearly <- function(activity) {
-  data <- general_activity %>%
-            filter(status == activity)
+  data <- general_activity %>% filter(status == activity) %>% select(year, count)
   return(data)
 }
 
 # grew by nearly 75% 
-receive_yearly <- activity_yearly("Receiving")
+activity_yearly("Receiving")
 
 # not selling as much :( 
-sold_yearly <- activity_yearly("Sold")
+activity_yearly("Sold")
 
 # increase by 40%
-retire_yearly <- activity_yearly("Retired")
+activity_yearly("Retired")
 ```
 
 ```{r re-enter-activity}
