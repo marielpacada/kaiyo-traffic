@@ -1,16 +1,6 @@
----
-title: "Kaiyo Warehouse Traffic"
-author: "Mariel Pacada"
-date: "5/15/2020"
-output: pdf_document
----
-
-```{r library setup, include = FALSE}
 library(dplyr)
 library(ggplot2)
-```
 
-```{r data-cleaning}
 setwd("/Users/marielpacada/kaiyo-traffic")
 categories <- read.csv("categories.csv") 
 warehouse <- read.csv("warehouse_flux.csv")
@@ -33,9 +23,8 @@ warehouse$year <- as.factor(warehouse$create_date$year + 1900)
 warehouse$month <- warehouse$create_date$mon + 1
 warehouse$month <- month.abb[warehouse$month]
 warehouse$create_date <- NULL
-```
 
-```{r count-by-status}
+
 # input: factor from status column
 # output: bar chart displaying count by each category for given status
 status_count <- function(activity) { 
@@ -48,9 +37,7 @@ status_count <- function(activity) {
 status_count("Receiving")
 status_count("Sold")
 status_count("Retired")
-```
 
-```{r likelihood-leave}
 # filter all items that have left the warehouse (either sold or retired)
 out_items <- warehouse %>% filter(status != "Receiving")
 
@@ -60,9 +47,8 @@ ggplot(out_items, aes(x = category, fill = status)) + geom_bar(position = "fill"
   xlab("Category") + ylab("Count") +
   theme(panel.background = element_blank(), axis.line = element_line(colour = "grey")) +
   scale_fill_brewer(palette = "Set1") + coord_flip()
-```
 
-```{r activity-per-month, fig.width = 5}
+
 # bar chart that shows activity for each month
 ggplot(warehouse, aes(x = factor(month, levels = month.abb), 
                       fill = factor(status, levels = c("Receiving", "Sold", "Retired")))) + 
@@ -70,23 +56,21 @@ ggplot(warehouse, aes(x = factor(month, levels = month.abb),
   labs(title = "Monthly Receiving and Selling Activity", fill = "Status") + 
   xlab("Month") + ylab("Count") +
   scale_fill_brewer(palette = "Paired")
-```
 
-```{r first-trimester}
+
 # filters the receiving items for the first trimester
 first_tri <- warehouse %>% 
-               filter(month == "Jan"|month == "Feb"|month == "Mar" & status == "Receiving") %>%
-               group_by(category) %>% 
-               summarize(count = n())
+  filter(month == "Jan"|month == "Feb"|month == "Mar" & status == "Receiving") %>%
+  group_by(category) %>% 
+  summarize(count = n())
 
 # bar chart displaying count by each category within the first trimester of all given years
 ggplot(first_tri, aes(x = category, y = count)) + 
   labs(title = "Items received within the first quarter") +
   xlab("Category") + ylab("Count") +
   geom_bar(fill = "#189ff2", stat = "identity", width = 0.5)
-```
 
-```{r re-enter-activity}
+
 # all items marked receiving, including items received more than once
 all_received <- warehouse %>% filter(status == "Receiving") %>% select(status, subitem_id, category)
 
@@ -101,17 +85,17 @@ repeat_received <- merge(repeat_received, once_received, by = "subitem_id")
 # creates a subset that contains only items that were received more than once
 # counts how many items (NOT how many times it was received) were received more than once for each category
 repeat_received <- repeat_received %>% 
-                     filter(count > 1) %>% 
-                     group_by(category) %>% 
-                     summarize(count = n())
+  filter(count > 1) %>% 
+  group_by(category) %>% 
+  summarize(count = n())
 
 ggplot(repeat_received, aes(x = category, y = count)) + 
   geom_bar(fill = "#43ad26", stat = "identity", width = 0.5) + 
   labs(title = "Items that were received more than once") +
   xlab("Category") + ylab("Count")
-```
 
-```{r covid-data-setup}
+
+
 # filters data for the first four months of each year
 corona_months <- warehouse %>% filter(month == "Mar"|month == "Apr")
 
@@ -120,9 +104,9 @@ pre_covid <- corona_months %>% filter(year != "2020")
 
 # subset that contains only examples from 2020
 covid <- corona_months %>% filter(year == "2020")
-```
 
-```{r covid-analysis}
+
+
 # input: factor from status column 
 # output: data frame showing the proportion of all first-four-month activity that were from before/after covid
 corona_activity <- function(activity) { 
@@ -138,14 +122,14 @@ corona_activity <- function(activity) {
 
 corona_activity("Receiving")
 corona_activity("Sold")
-```
 
-```{r seed-funding-analysis}
+
+
 # filters all examples from 2018 and 2019
 general_activity <- warehouse %>% 
-                      filter(year != "2020") %>% 
-                      group_by(year, status) %>% 
-                      summarize(count = n())
+  filter(year != "2020") %>% 
+  group_by(year, status) %>% 
+  summarize(count = n())
 
 # input: factor from status column
 # output: data frame showing the item count from each year based on status
@@ -157,4 +141,4 @@ activity_yearly <- function(activity) {
 activity_yearly("Receiving")
 activity_yearly("Sold")
 activity_yearly("Retired")
-```
+
