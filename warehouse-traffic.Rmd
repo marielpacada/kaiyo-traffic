@@ -49,6 +49,16 @@ status_count("Sold")
 status_count("Retired")
 ```
 
+```{r likelihood-leave}
+# all the items that have left
+out_items <- warehouse %>% filter(status != "Receiving")
+
+ggplot(out_items, aes(x = category, fill = status)) + geom_bar(position = "fill") + 
+  labs() +
+  theme(panel.background = element_blank(), axis.line = element_line(colour = "grey")) +
+  scale_fill_brewer(palette = "Set1")
+```
+
 ```{r activity-per-month, fig.width = 5}
 month_data <- warehouse %>% filter(status == "Sold" | status == "Receiving")
 
@@ -64,25 +74,8 @@ first_tri <- warehouse %>%
                group_by(category) %>% 
                summarize(count = n())
 
-ggplot(first_tri, aes(x = category, y = count)) + geom_bar(fill = "#F2AE0F", stat = "identity") + 
+ggplot(first_tri, aes(x = category, y = count)) + geom_bar(fill = "#007acc", stat = "identity") + 
   labs(title = "First Trimester Receiving")
-```
-
-```{r likelihood-sold}
-leave_prob <- function(activity) {
-  status_data <- warehouse %>% filter(status == activity) %>% group_by(category) %>% summarize(count = n())
-  rec_data <- warehouse %>% filter(status == "Receiving") %>% group_by(category) %>% summarize(count = n())
-  df <- data.frame(category = levels(categories$category), ratio = status_data$count / rec_data$count)
-  
-  return(ggplot(df, aes(x = category, y = ratio)) + geom_bar(fill = "#F2AE0F", stat = "identity") + 
-           labs(title = paste("Probability of Being", activity)))
-}
-
-leave_prob("Sold")
-leave_prob("Retired")
-
-
-# more people are probably buying decor because it is cheaper and a lower commitment 
 ```
 
 ```{r covid-data-setup}
@@ -114,8 +107,10 @@ quad_activity("Receiving")
 
 ```{r seed-funding-analysis}
 # baseline 2018 and 2019 data
-general_activity <- warehouse %>% filter(year != "2020") %>% group_by(year, status) %>% summarize(count = n())
-general_yearly <- general_activity %>% group_by(year) %>% summarize(count = sum(count))
+general_activity <- warehouse %>% 
+                      filter(year != "2020") %>% 
+                      group_by(year, status) %>% 
+                      summarize(count = n())
 
 activity_yearly <- function(activity) {
   data <- general_activity %>% filter(status == activity) %>% select(year, count)
@@ -134,11 +129,17 @@ activity_yearly("Retired")
 
 ```{r re-enter-activity}
 # some items are classified as two different categories!!!
-all_received <- receiving_data %>% dplyr::select(status, subitem_id, category)
+all_received <- warehouse %>% filter(status == "Receiving") %>% select(status, subitem_id, category)
+
+# we check duplication on subitem_id because some items are logged as different categories
 once_received <- all_received[!duplicated(all_received$subitem_id),]
 
+# how many times a unique item was received 
 repeat_received <- all_received %>% group_by(subitem_id) %>% summarize(count = n())
 repeat_received <- merge(repeat_received, once_received, by = "subitem_id")
+
+# subsets the items that were received more than once, and then counts how many ITEMS (not how many times it was
+# re-received) were received more than once for each category
 repeat_received <- repeat_received %>% 
                      filter(count > 1) %>% 
                      group_by(category) %>% 
